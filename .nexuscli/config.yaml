@@ -1,0 +1,7 @@
+nexus:
+  url: http://reg.test.tld:8081
+  username: admin
+  password: temppass
+  token: ""
+  insecureSkipVerify: false
+  timeoutSeconds: 30
