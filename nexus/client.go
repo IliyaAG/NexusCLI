@@ -9,7 +9,6 @@ import (
     "io"
     "net/http"
     "nexuscli/config"
-    "time"
 )
 
 // Client represents the Nexus API client

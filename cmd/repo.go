@@ -9,7 +9,7 @@ import (
 )
 
 var (
-    repoType string // Flag for repository type (e.g., docker-proxy, docker-hosted)
+    repoType string
 )
 
 // repoCmd represents the repo command
@@ -71,11 +71,15 @@ var repoListCmd = &cobra.Command{
         w := tabwriter.NewWriter(os.Stdout, 0, 0, 3, ' ', tabwriter.Debug)
         fmt.Fprintln(w, "NAME\tFORMAT\tTYPE\tURL\tONLINE")
         for _, repo := range repos {
-            name := repo["name"].(string)
-            format := repo["format"].(string)
-            repoType := repo["type"].(string)
-            url := repo["url"].(string)
-            online := repo["online"].(bool)
+            name, _ := repo["name"].(string)
+            format, _ := repo["format"].(string)
+            repoType, _ := repo["type"].(string)
+            url, _ := repo["url"].(string)
+
+            online := false
+            if v, ok := repo["online"].(bool); ok {
+                online = v
+            }
             fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%t\n", name, format, repoType, url, online)
         }
         w.Flush()

@@ -12,8 +12,10 @@ import (
 // Config holds all application configuration
 type Config struct {
     Nexus struct {
-        URL                 string `mapstructure:"url"`
-        Token               string `mapstructure:"token"` 
+        URL                string `mapstructure:"url"`
+        Token              string `mapstructure:"token"`
+        Username           string `mapstructure:"username"`
+        Password           string `mapstructure:"password"`
         InsecureSkipVerify bool   `mapstructure:"insecureSkipVerify"` 
         TimeoutSeconds     int    `mapstructure:"timeoutSeconds"`
     } `mapstructure:"nexus"`
@@ -39,11 +41,13 @@ func InitConfig() error {
  // Set default values
     viper.SetDefault("nexus.url", "http://localhost:8081")
     viper.SetDefault("nexus.token", "")
+    viper.SetDefault("nexus.username", "")
+    viper.SetDefault("nexus.password", "")
     viper.SetDefault("nexus.insecureSkipVerify", false)
     viper.SetDefault("nexus.timeoutSeconds", 30)
 
  // Read environment variables (e.g., NEXUS_URL, NEXUS_TOKEN)
-    viper.SetEnvPrefix("NEXUS") // Will look for NEXUS_URL, NEXUS_TOKEN etc.
+    viper.SetEnvPrefix("NEXUS")
     viper.AutomaticEnv()
 
  // Create config directory if it doesn't exist
