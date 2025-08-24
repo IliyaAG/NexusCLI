@@ -27,7 +27,46 @@ In this project, there is a subcommand called command, using which you can get t
 
 # Quick Setup:
 ## Build From Source Code
-
+**1) **clone the project:
+```bash
+git clone https://github.com/IliyaAG/NexusCLI
+```
+**2)**go to project directory:
+```bash
+cd NexusCLI
+```
+**3)**excutble setup.sh:
+```bash
+chmod +x setup.sh
+```
+**4)**run setup.sh and select your main shell:
+```bash
+./setup.sh
+```
 ## Install Package
-
+**deb** and **rpm**
 ## Auto Completion
+<details>
+  <summary><h3>BASH</h3></summary>
+  <div align=center>
+  </div>
+</details>
+<hr>
+<details>
+  <summary><h3>ZSH</h3></summary>
+  <div align=center>
+  </div>
+</details>
+<hr>
+<details>
+  <summary><h3>FISH</h3></summary>
+  <div align=center>
+  </div>
+</details>
+<hr>
+<details>
+  <summary><h3>Other shells</h3></summary>
+  <div align=center>
+  </div>
+</details>
+<hr>
