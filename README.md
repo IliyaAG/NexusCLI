@@ -49,6 +49,10 @@ chmod +x setup.sh
 <details>
   <summary><h3>BASH</h3></summary>
   <div align=center>
+   <p>
+   run fallowing commands:
+  nexuscli completion bash > /etc/bash_completion.d/nexuscli
+   </p>
   </div>
 </details>
 <hr>
