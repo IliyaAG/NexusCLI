@@ -2,19 +2,22 @@
 package cmd
 
 import (
+    "encoding/json"
     "fmt"
     "os"
     "strings"
     "text/tabwriter"
+    "gopkg.in/yaml.v3"
     "github.com/spf13/cobra"
 )
 
 var (
-    userPassword string
+    userPassword  string
     userFirstName string
     userLastName  string
     userEmail     string
     userRoles     []string
+    outputFormat  string
 )
 
 // userCmd represents the user command
@@ -83,25 +86,42 @@ var userListCmd = &cobra.Command{
             return
         }
 
-        w := tabwriter.NewWriter(os.Stdout, 0, 0, 3, ' ', tabwriter.Debug)
-        fmt.Fprintln(w, "USER ID\tFIRST NAME\tLAST NAME\tEMAIL\tSTATUS\tROLES")
-        for _, user := range users {
-            userID := user["userId"].(string)
-            firstName := user["firstName"].(string)
-            lastName := user["lastName"].(string)
-            email := user["emailAddress"].(string)
-            status := user["status"].(string)
-            roles := []string{}
-        if r, ok := user["roles"].([]interface{}); ok {
-            for _, role := range r {
-                if s, ok := role.(string); ok {
-                    roles = append(roles, s)
-                }
+        switch outputFormat {
+        case "json":
+            data, _ := json.MarshalIndent(users, "", "  ")
+            fmt.Println(string(data))
+        case "yaml", "yml":
+            data, _ := yaml.Marshal(users)
+            fmt.Println(string(data))
+        case "color":
+            for _, user := range users {
+                userID := user["userId"].(string)
+                firstName := user["firstName"].(string)
+                status := user["status"].(string)
+                fmt.Printf("\033[36m%s\033[0m\t%s\t%s\n", userID, firstName, status)
             }
+        default:
+            w := tabwriter.NewWriter(os.Stdout, 0, 0, 3, ' ', tabwriter.Debug)
+            fmt.Fprintln(w, "USER ID\tFIRST NAME\tLAST NAME\tEMAIL\tSTATUS\tROLES")
+            for _, user := range users {
+                userID := user["userId"].(string)
+                firstName := user["firstName"].(string)
+                lastName := user["lastName"].(string)
+                email := user["emailAddress"].(string)
+                status := user["status"].(string)
+                roles := []string{}
+                if r, ok := user["roles"].([]interface{}); ok {
+                    for _, role := range r {
+                        if s, ok := role.(string); ok {
+                            roles = append(roles, s)
+                        }
+                    }
+                }
+                fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\t%s\n",
+                    userID, firstName, lastName, email, status, strings.Join(roles, ", "))
+            }
+            w.Flush()
         }
-        fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\t%s\n", userID, firstName, lastName, email, status, strings.Join(roles, ", "))
-        }
-        w.Flush()
     },
 }
 
@@ -111,14 +131,17 @@ func init() {
     userCmd.AddCommand(userDeleteCmd)
     userCmd.AddCommand(userListCmd)
 
- // Flags for user create command
+    // Flags for user create command
     userCreateCmd.Flags().StringVarP(&userPassword, "password", "p", "", "Password for the new user (required)")
     userCreateCmd.Flags().StringVarP(&userFirstName, "first-name", "f", "", "First name of the new user")
     userCreateCmd.Flags().StringVarP(&userLastName, "last-name", "l", "", "Last name of the new user")
     userCreateCmd.Flags().StringVarP(&userEmail, "email", "e", "", "Email address of the new user (required)")
     userCreateCmd.Flags().StringSliceVarP(&userRoles, "roles", "r", []string{"nx-anonymous"}, "Comma-separated list of roles for the new user")
 
- // Mark required flags
+    // Mark required flags
     _ = userCreateCmd.MarkFlagRequired("password")
     _ = userCreateCmd.MarkFlagRequired("email")
+
+    // Add output flag to user list
+    userListCmd.Flags().StringVarP(&outputFormat, "output", "o", "table", "Output format: table, json, yaml, color")
 }

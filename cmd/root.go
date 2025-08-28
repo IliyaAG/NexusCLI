@@ -1,4 +1,3 @@
-// cmd/root.go
 package cmd
 
 import (
@@ -10,7 +9,8 @@ import (
 )
 
 var (
-    nexusClient *nexus.Client
+    nexusClient  *nexus.Client
+    outputFormat string
 )
 
 // rootCmd represents the base command when called without any subcommands
@@ -25,8 +25,8 @@ It allows you to manage repositories, users, and more directly from your termina
             return fmt.Errorf("failed to initialize configuration: %w", err)
         }
         // Initialize Nexus client
-    nexusClient = nexus.NewClient(config.GlobalConfig)
-    return nil
+        nexusClient = nexus.NewClient(config.GlobalConfig)
+        return nil
     },
 }
 
@@ -39,6 +39,9 @@ func Execute() {
 }
 
 func init() {
- // Here you can define global flags if needed
- // rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.nexuscli/config.yaml)")
+    // Add global output flag
+    rootCmd.PersistentFlags().StringVarP(&outputFormat, "output", "o", "table", "Output format: table|json|yaml|color")
+
+    // Example: if you want to add global config file path later
+    // rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.nexuscli/config.yaml)")
 }

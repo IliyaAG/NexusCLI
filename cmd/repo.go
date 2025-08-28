@@ -2,9 +2,11 @@
 package cmd
 
 import (
+    "encoding/json"
     "fmt"
     "os"
     "text/tabwriter"
+    "gopkg.in/yaml.v3"
     "github.com/spf13/cobra"
 )
 
@@ -68,21 +70,35 @@ var repoListCmd = &cobra.Command{
             return
         }
 
-        w := tabwriter.NewWriter(os.Stdout, 0, 0, 3, ' ', tabwriter.Debug)
-        fmt.Fprintln(w, "NAME\tFORMAT\tTYPE\tURL\tONLINE")
-        for _, repo := range repos {
-            name, _ := repo["name"].(string)
-            format, _ := repo["format"].(string)
-            repoType, _ := repo["type"].(string)
-            url, _ := repo["url"].(string)
-
-            online := false
-            if v, ok := repo["online"].(bool); ok {
-                online = v
+        switch outputFormat {
+        case "json":
+            data, _ := json.MarshalIndent(repos, "", "  ")
+            fmt.Println(string(data))
+        case "yaml", "yml":
+            data, _ := yaml.Marshal(repos)
+            fmt.Println(string(data))
+        case "color":
+            for _, repo := range repos {
+                fmt.Printf("\033[32m%s\033[0m\t%s\t%s\t%s\t%t\n",
+                    repo["name"], repo["format"], repo["type"], repo["url"], repo["online"])
             }
-            fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%t\n", name, format, repoType, url, online)
+        default:
+            w := tabwriter.NewWriter(os.Stdout, 0, 0, 3, ' ', tabwriter.Debug)
+            fmt.Fprintln(w, "NAME\tFORMAT\tTYPE\tURL\tONLINE")
+            for _, repo := range repos {
+                name, _ := repo["name"].(string)
+                format, _ := repo["format"].(string)
+                repoType, _ := repo["type"].(string)
+                url, _ := repo["url"].(string)
+
+                online := false
+                if v, ok := repo["online"].(bool); ok {
+                    online = v
+                }
+                fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%t\n", name, format, repoType, url, online)
+            }
+            w.Flush()
         }
-        w.Flush()
     },
 }
 
