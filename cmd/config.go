@@ -28,8 +28,8 @@ var configViewCmd = &cobra.Command{
         fmt.Println("Current Nexus CLI Configuration:")
         fmt.Printf("  Nexus URL: %s\n", config.GlobalConfig.Nexus.URL)
         fmt.Printf("  Nexus Token: %s\n", config.GlobalConfig.Nexus.Token)
-        fmt.Printf("  Nexus Username: %s/n", config.GlobalConfig.Nexus.Username)
-        fmt.Printf("  Nexus Password: %s/n", maskPassword(config.GlobalConfig.Nexus.Password))
+        fmt.Printf("  Nexus Username: %s\n", config.GlobalConfig.Nexus.Username)
+        fmt.Printf("  Nexus Password: %s\n", maskPassword(config.GlobalConfig.Nexus.Password))
         fmt.Printf("  Insecure Skip Verify: %t\n", config.GlobalConfig.Nexus.InsecureSkipVerify)
         fmt.Printf("  Timeout Seconds: %d\n", config.GlobalConfig.Nexus.TimeoutSeconds)
     },

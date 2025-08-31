@@ -74,4 +74,7 @@ else
     sudo tar -C /usr/local -xzf "${GO_VERSION}.linux-amd64.tar.gz"
     echo -e "${YELLOW} -> Add go to PATH ${RESET}"
     echo 'export PATH=$PATH:/usr/local/go/bin' >> $rc_file
+    source $rc_file
 fi
+go build -o nexuscli .
+
