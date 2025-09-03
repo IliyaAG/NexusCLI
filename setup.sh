@@ -76,5 +76,7 @@ else
     echo 'export PATH=$PATH:/usr/local/go/bin' >> $rc_file
     source $rc_file
 fi
-go build -o nexuscli .
-
+echo -e "${YELLOW} -> Building nexuscli ${RESET}"
+sudo go build -o /usr/local/bin/nexuscli .
+echo -e "${YELLOW} -> Add nexuscli auto completion ${RESET}"
+/usr/local/bin/nexuscli completion $selected_shell
