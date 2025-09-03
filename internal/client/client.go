@@ -1,216 +1,156 @@
-// nexus/client.go
-package nexus
+package client
 
 import (
     "bytes"
-    "crypto/tls"
     "encoding/json"
     "fmt"
-    "io"
+    "io/ioutil"
     "net/http"
-    "nexuscli/config"
+    "time"
 )
 
-// Client represents the Nexus API client
-type Client struct {
-    BaseURL    string
-    Token      string
-    Username   string
-    Password   string
-    HTTPClient *http.Client
+type NexusClient struct {
+    baseURL  string
+    username string
+    password string
+    token    string
+    timeout  time.Duration
+    client   *http.Client
 }
 
-// NewClient creates a new Nexus API client
-func NewClient(cfg config.Config) *Client {
-    tr := &http.Transport{
-        TLSClientConfig: &tls.Config{InsecureSkipVerify: cfg.Nexus.InsecureSkipVerify},
-    }
-    httpClient := &http.Client{
-        Timeout:   cfg.GetTimeout(),
-        Transport: tr,
-    }
-    return &Client{
-        BaseURL:    cfg.Nexus.URL,
-        Token:      cfg.Nexus.Token,
-        Username:   cfg.Nexus.Username,
-        Password:   cfg.Nexus.Password,
-        HTTPClient: httpClient,
+func NewNexusClient(url, username, password, token string, timeoutSec int) *NexusClient {
+    timeout := time.Duration(timeoutSec) * time.Second
+    return &NexusClient{
+        baseURL: url,
+        username: username,
+        password: password,
+        token:   token,
+        timeout: timeout,
+        client: &http.Client{
+            Timeout: timeout,
+        },
     }
 }
 
-// doRequest performs an HTTP request to the Nexus API
-func (c *Client) doRequest(method, path string, body interface{}) ([]byte, error) {
-    url := fmt.Sprintf("%s/service/rest/%s", c.BaseURL, path)
+// ---------------- USER ---------------- //
 
-    var reqBody io.Reader
-    if body != nil {
-        jsonBody, err := json.Marshal(body)
-        if err != nil {
-            return nil, fmt.Errorf("failed to marshal request body: %w", err)
-        }
-        reqBody = bytes.NewBuffer(jsonBody)
-    }
-    
-    req, err := http.NewRequest(method, url, reqBody)
-    if err != nil {
-        return nil, fmt.Errorf("failed to create request: %w", err)
-    }
-
-    req.Header.Set("Content-Type", "application/json")
-    
-    if c.Token != "" {
-        req.Header.Set("Authorization", "NexusAPIKey "+c.Token)
-    } else if c.Username != "" && c.Password != "" {
-        req.SetBasicAuth(c.Username, c.Password)
-    }
-
-    resp, err := c.HTTPClient.Do(req)
-    if err != nil {
-        return nil, fmt.Errorf("failed to execute request to %s: %w", url, err)
-    }
-    defer resp.Body.Close()
-
-    respBody, err := io.ReadAll(resp.Body)
-    if err != nil {
-        return nil, fmt.Errorf("failed to read response body: %w", err)
-    }
-
-    if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-        return nil, fmt.Errorf("API request failed with status %d: %s", resp.StatusCode, string(respBody))
-    }
-
-    return respBody, nil
-}
-
-// --- Repository API Calls ---
-
-// CreateRepository creates a new repository (simplified for Docker proxy/hosted)
-func (c *Client) CreateRepository(repoType, repoName string) error {
-    var payload map[string]interface{}
-
-    switch repoType {
-    case "docker-proxy":
-        payload = map[string]interface{}{
-            "name":    repoName,
-            "format":  "docker",
-            "type":    "proxy",
-            "url":     "https://registry-1.docker.io", // Example proxy URL
-            "online":  true,
-            "storage": map[string]string{
-                "blobStoreName": "default",
-                "strictContentTypeValidation": "true",
-            },
-            "proxy": map[string]interface{}{
-                "remoteUrl": "https://registry-1.docker.io",
-            },
-            "httpClient": map[string]interface{}{
-                "blocked": false,
-                "autoBlock": true,
-            },
-            "docker": map[string]interface{}{
-                "v1Enabled":      false,
-                "forceBasicAuth": false,
-                "httpPort":       0, // Or your specific port
-                "httpsPort":      0, // Or your specific port
-            },
-        }
-    case "docker-hosted":
-        payload = map[string]interface{}{
-            "name":    repoName,
-            "format":  "docker",
-            "type":    "hosted",
-            "online":  true,
-            "storage": map[string]string{
-                "blobStoreName": "default",
-                "strictContentTypeValidation": "true",
-            },
-            "docker": map[string]interface{}{
-                "v1Enabled":      false,
-                "forceBasicAuth": true, // Usually true for hosted
-                "httpPort":       0,
-                "httpsPort":      0,
-            },
-            "cleanup": map[string]interface{}{
-                "policyNames": []string{},
-            },
-            "component": map[string]interface{}{
-                "proprietaryComponents": true,
-            },
-       }
-    default:
-        return fmt.Errorf("unsupported repository type: %s. Implement more types based on Nexus API.", repoType)
-    }
-
-    _, err := c.doRequest(http.MethodPost, "v1/repositories", payload)
-    if err != nil {
-        return fmt.Errorf("failed to create repository '%s': %w", repoName, err)
-    }
-    return nil
-}
-
-// DeleteRepository deletes a repository
-func (c *Client) DeleteRepository(repoName string) error {
-    _, err := c.doRequest(http.MethodDelete, fmt.Sprintf("v1/repositories/%s", repoName), nil)
-    if err != nil {
-        return fmt.Errorf("failed to delete repository '%s': %w", repoName, err)
-    }
-    return nil
-}
-
-// --- User API Calls ---
-
-// CreateUser creates a new user
-func (c *Client) CreateUser(username, password, firstName, lastName, email string, roles []string) error {
-    payload := map[string]interface{}{
+func (c *NexusClient) CreateUser(username, password, firstName, lastName, email string, roles []string) error {
+    body := map[string]interface{}{
         "userId":    username,
         "firstName": firstName,
         "lastName":  lastName,
         "emailAddress": email,
         "password":  password,
-        "status":    "active", // or "locked"
+        "status":    "active",
         "roles":     roles,
     }
 
-    _, err := c.doRequest(http.MethodPost, "v1/security/users", payload)
-    if err != nil {
-        return fmt.Errorf("failed to create user '%s': %w", username, err)
-    }
-    return nil
+    return c.post("/service/rest/v1/security/users", body)
 }
 
-// DeleteUser deletes a user
-func (c *Client) DeleteUser(username string) error {
-    _, err := c.doRequest(http.MethodDelete, fmt.Sprintf("v1/security/users/%s", username), nil)
-    if err != nil {
-        return fmt.Errorf("failed to delete user '%s': %w", username, err)
-    }
-    return nil
+func (c *NexusClient) DeleteUser(username string) error {
+    return c.delete("/service/rest/v1/security/users/" + username)
 }
 
-// ListRepositories lists all repositories
-func (c *Client) ListRepositories() ([]map[string]interface{}, error) {
-    body, err := c.doRequest(http.MethodGet, "v1/repositories", nil)
+func (c *NexusClient) ListUsers() ([]map[string]interface{}, error) {
+    data, err := c.get("/service/rest/v1/security/users")
     if err != nil {
-        return nil, fmt.Errorf("failed to list repositories: %w", err)
+        return nil, err
     }
+    var users []map[string]interface{}
+    if err := json.Unmarshal(data, &users); err != nil {
+        return nil, err
+    }
+    return users, nil
+}
 
+// ---------------- REPO ---------------- //
+
+func (c *NexusClient) CreateRepository(repoType, name string) error {
+    body := map[string]interface{}{
+        "name":   name,
+        "online": true,
+        "recipe": fmt.Sprintf("%s-hosted", repoType),
+    }
+    return c.post("/service/rest/v1/repositories/"+repoType+"/hosted", body)
+}
+
+func (c *NexusClient) DeleteRepository(name string) error {
+    return c.delete("/service/rest/v1/repositories/" + name)
+}
+
+func (c *NexusClient) ListRepositories() ([]map[string]interface{}, error) {
+    data, err := c.get("/service/rest/v1/repositories")
+    if err != nil {
+        return nil, err
+    }
     var repos []map[string]interface{}
-    if err := json.Unmarshal(body, &repos); err != nil {
-        return nil, fmt.Errorf("failed to unmarshal repositories response: %w", err)
+    if err := json.Unmarshal(data, &repos); err != nil {
+        return nil, err
     }
     return repos, nil
 }
 
-// ListUsers lists all users
-func (c *Client) ListUsers() ([]map[string]interface{}, error) {
-    body, err := c.doRequest(http.MethodGet, "v1/security/users", nil)
-    if err != nil {
-        return nil, fmt.Errorf("failed to list users: %w", err)
-    }
+// ---------------- LOW LEVEL ---------------- //
 
-    var users []map[string]interface{}
-    if err := json.Unmarshal(body, &users); err != nil {
-        return nil, fmt.Errorf("failed to unmarshal users response: %w", err)
+func (c *NexusClient) addAuth(req *http.Request) {
+    if c.token != "" {
+        req.Header.Set("Authorization", "Bearer "+c.token)
+    }else if c.username != "" && c.password != "" {
+        req.SetBasicAuth(c.username, c.password)
     }
-    return users, nil
+}
+
+func (c *NexusClient) get(path string) ([]byte, error) {
+    req, err := http.NewRequest("GET", c.baseURL+path, nil)
+    if err != nil {
+        return nil, err
+    }
+    c.addAuth(req)
+    resp, err := c.client.Do(req)
+    if err != nil {
+        return nil, err
+    }
+    defer resp.Body.Close()
+    return ioutil.ReadAll(resp.Body)
+}
+
+func (c *NexusClient) post(path string, body map[string]interface{}) error {
+    data, _ := json.Marshal(body)
+    req, err := http.NewRequest("POST", c.baseURL+path, bytes.NewBuffer(data))
+    if err != nil {
+        return err
+    }
+    c.addAuth(req)
+    req.Header.Set("Content-Type", "application/json")
+
+    resp, err := c.client.Do(req)
+    if err != nil {
+        return err
+    }
+    defer resp.Body.Close()
+
+    if resp.StatusCode >= 300 {
+        return fmt.Errorf("Nexus returned status %s", resp.Status)
+    }
+    return nil
+}
+
+func (c *NexusClient) delete(path string) error {
+    req, err := http.NewRequest("DELETE", c.baseURL+path, nil)
+    if err != nil {
+        return err
+    }
+    c.addAuth(req)
+
+    resp, err := c.client.Do(req)
+    if err != nil {
+        return err
+    }
+    defer resp.Body.Close()
+
+    if resp.StatusCode >= 300 {
+        return fmt.Errorf("Nexus returned status %s", resp.Status)
+    }
+    return nil
 }

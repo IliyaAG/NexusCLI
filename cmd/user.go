@@ -1,13 +1,10 @@
-// cmd/user.go
 package cmd
 
 import (
-    "encoding/json"
     "fmt"
     "os"
     "strings"
-    "text/tabwriter"
-    "gopkg.in/yaml.v3"
+    "nexuscli/internal/output"
     "github.com/spf13/cobra"
 )
 
@@ -17,31 +14,23 @@ var (
     userLastName  string
     userEmail     string
     userRoles     []string
-    outputFormat  string
 )
 
-// userCmd represents the user command
 var userCmd = &cobra.Command{
     Use:   "user",
     Short: "Manage Nexus users",
     Long:  `Allows creating, deleting, and listing Nexus users.`,
 }
 
-// userCreateCmd represents the create subcommand for user
 var userCreateCmd = &cobra.Command{
     Use:   "create <username>",
     Short: "Create a new Nexus user",
-    Args:  cobra.ExactArgs(1), // Requires username
+    Args:  cobra.ExactArgs(1),
     Run: func(cmd *cobra.Command, args []string) {
         username := args[0]
 
-        if userPassword == "" {
-            fmt.Println("Error: --password is required.")
-            _ = cmd.Help()
-            os.Exit(1)
-        }
-        if userEmail == "" {
-            fmt.Println("Error: --email is required.")
+        if userPassword == "" || userEmail == "" {
+            fmt.Println("Error: --password and --email are required.")
             _ = cmd.Help()
             os.Exit(1)
         }
@@ -54,7 +43,6 @@ var userCreateCmd = &cobra.Command{
     },
 }
 
-// userDeleteCmd represents the delete subcommand for user
 var userDeleteCmd = &cobra.Command{
     Use:   "delete <username>",
     Short: "Delete a Nexus user",
@@ -70,7 +58,6 @@ var userDeleteCmd = &cobra.Command{
     },
 }
 
-// userListCmd represents the list subcommand for user
 var userListCmd = &cobra.Command{
     Use:   "list",
     Short: "List all Nexus users",
@@ -86,42 +73,31 @@ var userListCmd = &cobra.Command{
             return
         }
 
-        switch outputFormat {
-        case "json":
-            data, _ := json.MarshalIndent(users, "", "  ")
-            fmt.Println(string(data))
-        case "yaml", "yml":
-            data, _ := yaml.Marshal(users)
-            fmt.Println(string(data))
-        case "color":
-            for _, user := range users {
-                userID := user["userId"].(string)
-                firstName := user["firstName"].(string)
-                status := user["status"].(string)
-                fmt.Printf("\033[36m%s\033[0m\t%s\t%s\n", userID, firstName, status)
-            }
-        default:
-            w := tabwriter.NewWriter(os.Stdout, 0, 0, 3, ' ', tabwriter.Debug)
-            fmt.Fprintln(w, "USER ID\tFIRST NAME\tLAST NAME\tEMAIL\tSTATUS\tROLES")
-            for _, user := range users {
-                userID := user["userId"].(string)
-                firstName := user["firstName"].(string)
-                lastName := user["lastName"].(string)
-                email := user["emailAddress"].(string)
-                status := user["status"].(string)
-                roles := []string{}
-                if r, ok := user["roles"].([]interface{}); ok {
-                    for _, role := range r {
-                        if s, ok := role.(string); ok {
-                            roles = append(roles, s)
-                        }
+        items := []map[string]interface{}{}
+        for _, user := range users {
+            roles := []string{}
+            if r, ok := user["roles"].([]interface{}); ok {
+                for _, role := range r {
+                    if s, ok := role.(string); ok {
+                        roles = append(roles, s)
                     }
                 }
-                fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\t%s\n",
-                    userID, firstName, lastName, email, status, strings.Join(roles, ", "))
             }
-            w.Flush()
+            items = append(items, map[string]interface{}{
+                "USER ID":    user["userId"],
+                "FIRST NAME": user["firstName"],
+                "LAST NAME":  user["lastName"],
+                "EMAIL":      user["emailAddress"],
+                "STATUS":     user["status"],
+                "ROLES":      strings.Join(roles, ", "),
+            })
         }
+
+        headers := []string{"USER ID", "FIRST NAME", "LAST NAME", "EMAIL", "STATUS", "ROLES"}
+        output.Render(items, outputFormat, headers, func(u map[string]interface{}) {
+            fmt.Printf("\033[36m%s\033[0m\t%s\t%s\n",
+                u["USER ID"], u["FIRST NAME"], u["STATUS"])
+        })
     },
 }
 
@@ -131,17 +107,12 @@ func init() {
     userCmd.AddCommand(userDeleteCmd)
     userCmd.AddCommand(userListCmd)
 
-    // Flags for user create command
     userCreateCmd.Flags().StringVarP(&userPassword, "password", "p", "", "Password for the new user (required)")
     userCreateCmd.Flags().StringVarP(&userFirstName, "first-name", "f", "", "First name of the new user")
     userCreateCmd.Flags().StringVarP(&userLastName, "last-name", "l", "", "Last name of the new user")
     userCreateCmd.Flags().StringVarP(&userEmail, "email", "e", "", "Email address of the new user (required)")
     userCreateCmd.Flags().StringSliceVarP(&userRoles, "roles", "r", []string{"nx-anonymous"}, "Comma-separated list of roles for the new user")
 
-    // Mark required flags
     _ = userCreateCmd.MarkFlagRequired("password")
     _ = userCreateCmd.MarkFlagRequired("email")
-
-    // Add output flag to user list
-    userListCmd.Flags().StringVarP(&outputFormat, "output", "o", "table", "Output format: table, json, yaml, color")
 }

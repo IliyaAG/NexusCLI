@@ -1,27 +1,18 @@
-// cmd/repo.go
 package cmd
 
 import (
-    "encoding/json"
     "fmt"
     "os"
-    "text/tabwriter"
-    "gopkg.in/yaml.v3"
+    "nexuscli/internal/output"
     "github.com/spf13/cobra"
 )
 
-var (
-    repoType string
-)
-
-// repoCmd represents the repo command
 var repoCmd = &cobra.Command{
     Use:   "repo",
     Short: "Manage Nexus repositories",
     Long:  `Allows creating, deleting, and listing Nexus repositories.`,
 }
 
-// repoCreateCmd represents the create subcommand for repo
 var repoCreateCmd = &cobra.Command{
     Use:   "create <repo_type> <repo_name>",
     Short: "Create a new Nexus repository",
@@ -38,7 +29,6 @@ var repoCreateCmd = &cobra.Command{
     },
 }
 
-// repoDeleteCmd represents the delete subcommand for repo
 var repoDeleteCmd = &cobra.Command{
     Use:   "delete <repo_name>",
     Short: "Delete a Nexus repository",
@@ -54,7 +44,6 @@ var repoDeleteCmd = &cobra.Command{
     },
 }
 
-// repoListCmd represents the list subcommand for repo
 var repoListCmd = &cobra.Command{
     Use:   "list",
     Short: "List all Nexus repositories",
@@ -70,35 +59,22 @@ var repoListCmd = &cobra.Command{
             return
         }
 
-        switch outputFormat {
-        case "json":
-            data, _ := json.MarshalIndent(repos, "", "  ")
-            fmt.Println(string(data))
-        case "yaml", "yml":
-            data, _ := yaml.Marshal(repos)
-            fmt.Println(string(data))
-        case "color":
-            for _, repo := range repos {
-                fmt.Printf("\033[32m%s\033[0m\t%s\t%s\t%s\t%t\n",
-                    repo["name"], repo["format"], repo["type"], repo["url"], repo["online"])
-            }
-        default:
-            w := tabwriter.NewWriter(os.Stdout, 0, 0, 3, ' ', tabwriter.Debug)
-            fmt.Fprintln(w, "NAME\tFORMAT\tTYPE\tURL\tONLINE")
-            for _, repo := range repos {
-                name, _ := repo["name"].(string)
-                format, _ := repo["format"].(string)
-                repoType, _ := repo["type"].(string)
-                url, _ := repo["url"].(string)
-
-                online := false
-                if v, ok := repo["online"].(bool); ok {
-                    online = v
-                }
-                fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%t\n", name, format, repoType, url, online)
-            }
-            w.Flush()
+        items := []map[string]interface{}{}
+        for _, repo := range repos {
+            items = append(items, map[string]interface{}{
+                "NAME":   repo["name"],
+                "FORMAT": repo["format"],
+                "TYPE":   repo["type"],
+                "URL":    repo["url"],
+                "ONLINE": repo["online"],
+            })
         }
+
+        headers := []string{"NAME", "FORMAT", "TYPE", "URL", "ONLINE"}
+        output.Render(items, outputFormat, headers, func(r map[string]interface{}) {
+            fmt.Printf("\033[32m%s\033[0m\t%s\t%s\t%s\t%v\n",
+                r["NAME"], r["FORMAT"], r["TYPE"], r["URL"], r["ONLINE"])
+        })
     },
 }
 
