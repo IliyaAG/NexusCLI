@@ -7,6 +7,7 @@ Command line interface for sonatype nexus repository
 
 - [Subcommands:](#subcommands)
   - [command](#command)
+  - [completion](#completion)
   - [config](#config)
   - [user](#user)
   - [repo](#repo)
@@ -24,6 +25,9 @@ In this project, there is a subcommand called command, using which you can get t
 ## user
 
 ## repo
+
+## completion
+
 
 # Quick Setup:
 ## Build From Source Code
@@ -45,6 +49,7 @@ chmod +x setup.sh
 ```
 ## Install Package
 **deb** and **rpm**
+
 ## Auto Completion
 <details>
   <summary><h3>BASH</h3></summary>
@@ -74,3 +79,4 @@ chmod +x setup.sh
   </div>
 </details>
 <hr>
+
