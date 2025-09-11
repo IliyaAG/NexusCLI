@@ -16,9 +16,10 @@ type NexusClient struct {
     token    string
     timeout  time.Duration
     client   *http.Client
+    verbose  int
 }
 
-func NewNexusClient(url, username, password, token string, timeoutSec int) *NexusClient {
+func NewNexusClient(url, username, password, token string, timeoutSec, verbose int) *NexusClient {
     timeout := time.Duration(timeoutSec) * time.Second
     return &NexusClient{
         baseURL: url,
@@ -26,6 +27,7 @@ func NewNexusClient(url, username, password, token string, timeoutSec int) *Nexu
         password: password,
         token:   token,
         timeout: timeout,
+        verbose: verbose,
         client: &http.Client{
             Timeout: timeout,
         },
@@ -101,18 +103,55 @@ func (c *NexusClient) addAuth(req *http.Request) {
     }
 }
 
+func (c *NexusClient) logRequest(req *http.Request, body []byte) {
+    if c.verbose >= 1 {
+        fmt.Printf("[HTTP] %s %s\n", req.Method, req.URL.String())
+    }
+    if c.verbose >= 2 {
+        fmt.Println("Headers:")
+        for k, v := range req.Header {
+            fmt.Printf("  %s: %v\n", k, v)
+        }
+        if len(body) > 0 {
+            fmt.Println("Body:")
+            fmt.Println(string(body))
+        }
+    }
+}
+
+func (c *NexusClient) logResponse(resp *http.Response, data []byte) {
+    if c.verbose >= 1 {
+        fmt.Printf("[HTTP] Response %s\n", resp.Status)
+    }
+    if c.verbose >= 2 {
+        fmt.Println("Response Headers:")
+        for k, v := range resp.Header {
+            fmt.Printf("  %s: %v\n", k, v)
+        }
+        if len(data) > 0 {
+            fmt.Println("Response Body:")
+            fmt.Println(string(data))
+        }
+    }
+}
+
 func (c *NexusClient) get(path string) ([]byte, error) {
     req, err := http.NewRequest("GET", c.baseURL+path, nil)
     if err != nil {
         return nil, err
     }
     c.addAuth(req)
+    c.logRequest(req, nil)
+
     resp, err := c.client.Do(req)
     if err != nil {
         return nil, err
     }
     defer resp.Body.Close()
-    return ioutil.ReadAll(resp.Body)
+    data, _ := ioutil.ReadAll(resp.Body)
+
+    c.logResponse(resp, data)
+    return data, nil
 }
 
 func (c *NexusClient) post(path string, body map[string]interface{}) error {
@@ -123,13 +162,16 @@ func (c *NexusClient) post(path string, body map[string]interface{}) error {
     }
     c.addAuth(req)
     req.Header.Set("Content-Type", "application/json")
+    c.logRequest(req, data)
 
     resp, err := c.client.Do(req)
     if err != nil {
         return err
     }
     defer resp.Body.Close()
+    respData, _ := ioutil.ReadAll(resp.Body)
 
+    c.logResponse(resp, respData)
     if resp.StatusCode >= 300 {
         return fmt.Errorf("Nexus returned status %s", resp.Status)
     }
@@ -142,13 +184,16 @@ func (c *NexusClient) delete(path string) error {
         return err
     }
     c.addAuth(req)
+    c.logRequest(req, nil)
 
     resp, err := c.client.Do(req)
     if err != nil {
         return err
     }
     defer resp.Body.Close()
+    data, _ := ioutil.ReadAll(resp.Body)
 
+    c.logResponse(resp, data)
     if resp.StatusCode >= 300 {
         return fmt.Errorf("Nexus returned status %s", resp.Status)
     }

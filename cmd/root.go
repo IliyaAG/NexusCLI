@@ -11,6 +11,7 @@ import (
 var (
     outputFormat string
     nexusClient  *client.NexusClient
+    verbosity      int
 )
 
 var rootCmd = &cobra.Command{
@@ -27,6 +28,7 @@ var rootCmd = &cobra.Command{
             config.Global.Password,
             config.Global.Token,
             config.Global.Timeout,
+            verbosity,
         )
         return nil
     },
@@ -42,4 +44,6 @@ func Execute() {
 func init() {
     rootCmd.PersistentFlags().StringVarP(&outputFormat, "output", "o", "table",
         "Output format: table, json, yaml, color")
+    rootCmd.PersistentFlags().CountVarP(&verbosity, "verbose", "v",
+        "Increase verbosity level (use -v for basic, -vv for debug)")
 }
