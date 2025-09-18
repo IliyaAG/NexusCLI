@@ -93,6 +93,32 @@ func (c *NexusClient) ListRepositories() ([]map[string]interface{}, error) {
     return repos, nil
 }
 
+// ---------------- BLOB ---------------- //
+
+func (c *NexusClient) ListBlobStores() ([]map[string]interface{}, error) {
+    data, err := c.get("/service/rest/v1/blobstores")
+    if err != nil {
+        return nil, err
+    }
+    var blobs []map[string]interface{}
+    if err := json.Unmarshal(data, &blobs); err != nil {
+        return nil, err
+    }
+    return blobs, nil
+}
+
+func (c *NexusClient) CreateBlobStore(name, path string) error {
+    body := map[string]interface{}{
+        "name": name,
+        "path": path,
+    }
+    return c.post("/service/rest/v1/blobstores/file", body)
+}
+
+func (c *NexusClient) DeleteBlobStore(name string) error {
+    return c.delete("/service/rest/v1/blobstores/" + name)
+}
+
 // ---------------- LOW LEVEL ---------------- //
 
 func (c *NexusClient) addAuth(req *http.Request) {
