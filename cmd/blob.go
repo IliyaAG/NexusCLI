@@ -2,8 +2,8 @@ package cmd
 
 import (
     "fmt"
+    "os"
     "nexuscli/internal/output"
-
     "github.com/spf13/cobra"
 )
 
@@ -13,49 +13,74 @@ var (
 
 var blobCmd = &cobra.Command{
     Use:   "blob",
-    Short: "Manage Nexus Blob Stores",
+    Short: "Manage Nexus blob stores",
+    Long:  `Create, list, and delete Nexus blob stores.`,
 }
 
 var blobListCmd = &cobra.Command{
     Use:   "list",
     Short: "List all blob stores",
-    RunE: func(cmd *cobra.Command, args []string) error {
+    Run: func(cmd *cobra.Command, args []string) {
         blobs, err := nexusClient.ListBlobStores()
         if err != nil {
-            return err
+            fmt.Printf("Error listing blob stores: %v\n", err)
+            os.Exit(1)
         }
-        return output.Print(blobs, outputFormat)
+
+        if len(blobs) == 0 {
+            fmt.Println("No blob stores found.")
+            return
+        }
+
+        items := []map[string]interface{}{}
+        for _, b := range blobs {
+            items = append(items, map[string]interface{}{
+                "NAME": b["name"],
+                "TYPE": b["type"],
+                "PATH": b["path"],
+            })
+        }
+
+        headers := []string{"NAME", "TYPE", "PATH"}
+        output.Render(items, outputFormat, headers, func(r map[string]interface{}) {
+            fmt.Printf("\033[33m%s\033[0m\t%s\t%s\n",
+                r["NAME"], r["TYPE"], r["PATH"])
+        })
     },
 }
 
 var blobCreateCmd = &cobra.Command{
-    Use:   "create [name]",
-    Short: "Create a new blob store",
+    Use:   "create <name>",
+    Short: "Create a new file blob store",
     Args:  cobra.ExactArgs(1),
-    RunE: func(cmd *cobra.Command, args []string) error {
+    Run: func(cmd *cobra.Command, args []string) {
         name := args[0]
         if blobPath == "" {
-            return fmt.Errorf("you must provide --path for the blob store")
+            fmt.Println("Error: --path is required for creating a file blob store.")
+            _ = cmd.Help()
+            os.Exit(1)
         }
+
         if err := nexusClient.CreateBlobStore(name, blobPath); err != nil {
-            return err
+            fmt.Printf("Error creating blob store '%s': %v\n", name, err)
+            os.Exit(1)
         }
-        fmt.Printf("Blob store '%s' created successfully\n", name)
-        return nil
+        fmt.Printf("Blob store '%s' created successfully (path: %s).\n", name, blobPath)
     },
 }
 
 var blobDeleteCmd = &cobra.Command{
-    Use:   "delete [name]",
+    Use:   "delete <name>",
     Short: "Delete a blob store",
     Args:  cobra.ExactArgs(1),
-    RunE: func(cmd *cobra.Command, args []string) error {
+    Run: func(cmd *cobra.Command, args []string) {
         name := args[0]
+
         if err := nexusClient.DeleteBlobStore(name); err != nil {
-            return err
+            fmt.Printf("Error deleting blob store '%s': %v\n", name, err)
+            os.Exit(1)
         }
-        fmt.Printf("Blob store '%s' deleted successfully\n", name)
-        return nil
+        fmt.Printf("Blob store '%s' deleted successfully.\n", name)
     },
 }
 
@@ -66,5 +91,5 @@ func init() {
     blobCmd.AddCommand(blobCreateCmd)
     blobCmd.AddCommand(blobDeleteCmd)
 
-    blobCreateCmd.Flags().StringVar(&blobPath, "path", "", "Path for the blob store (required)")
+    blobCreateCmd.Flags().StringVar(&blobPath, "path", "", "Filesystem path for the file blob store (required)")
 }
