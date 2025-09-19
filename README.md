@@ -11,6 +11,7 @@ Command line interface for sonatype nexus repository
   - [config](#config)
   - [user](#user)
   - [repo](#repo)
+  - [blob](#blob)
 - [Quick Setup:](#quick-setup)
   - [Build From Source Code](#build-from-source-code)
   - [Install Package](#install-package)
@@ -25,6 +26,8 @@ In this project, there is a subcommand called command, using which you can get t
 ## user
 
 ## repo
+
+## blob
 
 ## completion
 
