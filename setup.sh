@@ -2,10 +2,19 @@
 
 set -e
 
-RED='\033[0;31m'
-YELLOW='\033[1;33m'
-GREEN='\033[0;32m'
-RESET='\033[0m'
+print_coloric() {
+    local color=$1
+    shift
+    local text="$*"
+
+    case $color in
+        red)    echo -e "\033[0;31m$text\033[0m";;
+        green)  echo -e "\033[0;32m$text\033[0m";;
+        yellow) echo -e "\033[0;33m$text\033[0m";;
+        *) echo -e "$text";;
+    esac
+}
+
 GO_VERSION='go1.22.4'
 shells=("bash" "zsh" "fish")
 
@@ -32,8 +41,6 @@ get_rc_file() {
     echo "$rc_file"
     return 0
 }
-
-
 
 
 display_shells
