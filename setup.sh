@@ -8,10 +8,10 @@ print_coloric() {
     local text="$*"
 
     case $color in
-        red)    echo -e "\033[0;31m$text\033[0m";;
-        green)  echo -e "\033[0;32m$text\033[0m";;
-        yellow) echo -e "\033[0;33m$text\033[0m";;
-        *) echo -e "$text";;
+        red)    echo -e "\033[0;31mi -> $text\033[0m";;
+        green)  echo -e "\033[0;32m -> $text\033[0m";;
+        yellow) echo -e "\033[0;33m -> $text\033[0m";;
+        *) echo -e "-> $text";;
     esac
 }
 
@@ -34,7 +34,7 @@ get_rc_file() {
         "zsh") rc_file="$HOME/.zshrc" ;;
         "fish") rc_file="$HOME/.config/fish/config.fish" ;;
         *)
-            echo -e "${RED}Error: Unknown shell '$shell_name'.${RESET}"
+            print_coloric red "Error: Unknown shell '$shell_name'."
             return 1
             ;;
     esac
@@ -48,42 +48,42 @@ display_shells
 read -p "Enter your choice (number): " choice
 
 if ! [[ "$choice" =~ ^[0-9]+$ ]]; then
-    echo -e "${RED}Error: Invalid input. Please enter a number.${RESET}"
+    print_coloric red "Error: Invalid input. Please enter a number."
     exit 1
 fi
 
 num_shells=${#shells[@]}
 if (( choice < 1 || choice > num_shells )); then
-    echo -e "${RED}Error: Your choice '$choice' is out of range."
-    echo -e "Please enter a number between 1 and $num_shells.${RESET}"
+    print_coloric red "Error: Your choice '$choice' is out of range."
+    print_coloric red "Please enter a number between 1 and $num_shells."
     exit 1
 fi
 
 selected_index=$((choice - 1))
 selected_shell=${shells[$selected_index]}
 
-echo -e "${YELLOW}-> You selected shell: '$selected_shell'.${RESET}"
+print_coloric yellow "You selected shell: '$selected_shell'."
 
 rc_file=$(get_rc_file "$selected_shell")
 if [ $? -ne 0 ]; then
     exit 1
 fi
 
-echo -e "${YELLOW} -> Check if GO is installed ${RESET}"
+print_coloric yellow "Check if GO is installed"
 if command -v go &> /dev/null; then
     GO_VERSION=$(go version | awk '{print $3}')
-    echo -e "${GREEN} $GO_VERSION is installed on your system ${RESET}"
+    print_coloric green "$GO_VERSION is installed on your system"
 else
-    echo -e "${YELLOW} -> Installing GO ${RESET}"
-    echo -e "${YELLOW} -> Downloading GO source code ${RESET}"
+    print_coloric yellow "Installing GO"
+    print_coloric yellow "Downloading GO source code"
     wget https://go.dev/dl/${GO_VERSION}.linux-amd64.tar.gz
-    echo -e "${YELLOW} -> Extracting files ${RESET}"
+    print_coloric yellow "Extracting files"
     sudo tar -C /usr/local -xzf "${GO_VERSION}.linux-amd64.tar.gz"
-    echo -e "${YELLOW} -> Add go to PATH ${RESET}"
+    print_coloric yellow "Add go to PATH"
     echo 'export PATH=$PATH:/usr/local/go/bin' >> $rc_file
     source $rc_file
 fi
-echo -e "${YELLOW} -> Building nexuscli ${RESET}"
+print_coloric yellow "Building nexuscli"
 sudo go build -o /usr/local/bin/nexuscli .
-echo -e "${YELLOW} -> Add nexuscli auto completion ${RESET}"
+print_coloric yellow "Add nexuscli auto completion"
 /usr/local/bin/nexuscli completion $selected_shell
